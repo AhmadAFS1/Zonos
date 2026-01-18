@@ -11,3 +11,6 @@ wheels/
 
 # Misc.
 .ipynb_checkpoints/
+
+/zonos-venv/
+/scripts/zonos-venv/
