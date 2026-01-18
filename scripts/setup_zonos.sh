@@ -127,6 +127,16 @@ ensure_python_312() {
   exit 1
 }
 
+install_audio_deps() {
+  log "Installing audio decode dependencies (torchcodec + ffmpeg)..."
+  if command -v brew >/dev/null 2>&1; then
+    brew install ffmpeg
+  else
+    log "Homebrew not found. Install ffmpeg manually."
+  fi
+  "$PYTHON_BIN" -m pip install torchcodec
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --scan-only) SCAN_ONLY=1 ;;
@@ -147,6 +157,7 @@ ensure_python_312
 install_espeak
 install_uv
 install_python_deps
+install_audio_deps
 
 if [[ "$RUN_CHECK" -eq 1 ]]; then
   run_check
