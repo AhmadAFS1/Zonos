@@ -1,26 +1,18 @@
+cat <<'SETUP_ZONOS_FULL' > setup_zonos_full.sh
 #!/usr/bin/env bash
-
-#sudo apt-get update
-#sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
-#python3.12 --version
-
-#python3.12 -m venv ./zonos-venv
-#source ./zonos-venv/bin/activate
-#python -m pip install -U pip setuptools wheel
-
-
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_URL="https://github.com/AhmadAFS1/Zonos.git"
+REPO_DIR="Zonos"
 
 SCAN_ONLY=0
 WITH_COMPILE=0
 RUN_CHECK=0
-PYTHON_BIN=""
+PYTHON_BIN="python"
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/setup_zonos.sh [options]
+Usage: ./setup_zonos_full.sh [options]
 
 Options:
   --scan-only   Print install-related instructions found in the repo and exit.
@@ -31,16 +23,47 @@ USAGE
 }
 
 log() {
-  printf "[setup] %s\n" "$@"
+  printf "[full-setup] %s\n" "$@"
+}
+
+clone_repo() {
+  if [[ -d "$REPO_DIR/.git" ]]; then
+    log "Repo already exists at $REPO_DIR."
+    return
+  fi
+  log "Cloning repo from $REPO_URL..."
+  git clone "$REPO_URL"
 }
 
 scan_repo() {
   log "Scanning repo for install instructions (excluding models/)..."
   if command -v rg >/dev/null 2>&1; then
-    rg -n "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" -S "$ROOT_DIR" --glob '!models/**'
+    rg -n "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" -S "$REPO_DIR" --glob '!models/**'
   else
-    grep -RInE "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" "$ROOT_DIR" --exclude-dir=models
+    grep -RInE "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" "$REPO_DIR" --exclude-dir=models
   fi
+}
+
+install_python_312_and_venv() {
+  if command -v apt-get >/dev/null 2>&1; then
+    log "Installing Python 3.12 (apt-get)..."
+    sudo apt-get update
+    sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
+  else
+    log "apt-get not found. Ensure Python 3.12 is installed manually."
+  fi
+
+  if ! command -v python3.12 >/dev/null 2>&1; then
+    log "python3.12 not found in PATH. Install it and rerun."
+    exit 1
+  fi
+
+  python3.12 --version
+  log "Creating venv at ./zonos-venv..."
+  python3.12 -m venv "./zonos-venv"
+  # shellcheck disable=SC1091
+  source "./zonos-venv/bin/activate"
+  python -m pip install -U pip setuptools wheel
 }
 
 install_espeak() {
@@ -92,45 +115,10 @@ install_uv() {
 
 install_python_deps() {
   log "Installing into the current active environment using uv..."
-  uv pip install -e "$ROOT_DIR"
+  uv pip install -e .
   if [[ "$WITH_COMPILE" -eq 1 ]]; then
-    uv pip install -e "$ROOT_DIR[compile]"
+    uv pip install -e .[compile]
   fi
-}
-
-run_check() {
-  log "Running sample.py..."
-  (cd "$ROOT_DIR" && "$PYTHON_BIN" sample.py)
-}
-
-ensure_python_312() {
-  if command -v python3.12 >/dev/null 2>&1; then
-    PYTHON_BIN="python3.12"
-    log "Using python3.12."
-    return
-  fi
-
-  if command -v pyenv >/dev/null 2>&1; then
-    log "Installing Python 3.12 via pyenv..."
-    pyenv install -s 3.12.0
-    pyenv local 3.12.0
-    PYTHON_BIN="$(pyenv which python)"
-    return
-  fi
-
-  if command -v brew >/dev/null 2>&1; then
-    log "Installing Python 3.12 via Homebrew..."
-    brew install python@3.12
-    if command -v python3.12 >/dev/null 2>&1; then
-      PYTHON_BIN="python3.12"
-      return
-    fi
-  fi
-
-  log "Python 3.12 not found. Please install it and rerun:"
-  log "  macOS (brew): brew install python@3.12"
-  log "  pyenv: pyenv install 3.12.0 && pyenv local 3.12.0"
-  exit 1
 }
 
 install_audio_deps() {
@@ -141,6 +129,11 @@ install_audio_deps() {
     log "Homebrew not found. Install ffmpeg manually."
   fi
   "$PYTHON_BIN" -m pip install torchcodec
+}
+
+run_check() {
+  log "Running sample.py..."
+  python sample.py
 }
 
 while [[ $# -gt 0 ]]; do
@@ -154,12 +147,15 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+clone_repo
+cd "$REPO_DIR"
+
 scan_repo
 if [[ "$SCAN_ONLY" -eq 1 ]]; then
   exit 0
 fi
 
-ensure_python_312
+install_python_312_and_venv
 install_espeak
 install_uv
 install_python_deps
@@ -168,3 +164,4 @@ install_audio_deps
 if [[ "$RUN_CHECK" -eq 1 ]]; then
   run_check
 fi
+SETUP_ZONOS_FULL
