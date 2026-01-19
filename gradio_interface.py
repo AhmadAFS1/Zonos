@@ -17,6 +17,27 @@ SPEAKER_EMBEDDING = None
 SPEAKER_AUDIO_PATH = None
 
 
+def estimate_max_tokens(text: str, speaking_rate: float, buffer_factor: float = 1.5) -> int:
+    """
+    Estimate max tokens needed based on text length.
+    
+    Args:
+        text: Input text
+        speaking_rate: Phonemes per second (from UI slider, typically 10-30)
+        buffer_factor: Safety margin (1.5 = 50% extra for pauses/emphasis)
+    
+    Returns:
+        Estimated max tokens (86 tokens = 1 second of audio)
+    """
+    # Rough estimate: ~1.2 phonemes per character for English
+    estimated_phonemes = len(text) * 1.2
+    estimated_duration_seconds = estimated_phonemes / max(speaking_rate, 5.0)
+    estimated_tokens = int(estimated_duration_seconds * 86 * buffer_factor)
+    
+    # Clamp to reasonable bounds: minimum 2 seconds, maximum 30 seconds
+    return max(172, min(estimated_tokens, 86 * 30))
+
+
 def load_model_if_needed(model_choice: str):
     global CURRENT_MODEL_TYPE, CURRENT_MODEL  # Make sure BOTH are here
     if CURRENT_MODEL_TYPE != model_choice:
@@ -136,7 +157,7 @@ def generate_audio(
     confidence = float(confidence)
     quadratic = float(quadratic)
     seed = int(seed)
-    max_new_tokens = 86 * 30
+    max_new_tokens = estimate_max_tokens(text, speaking_rate)
 
     # This is a bit ew, but works for now.
     global SPEAKER_AUDIO_PATH, SPEAKER_EMBEDDING
