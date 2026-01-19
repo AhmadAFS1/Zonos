@@ -1,3 +1,6 @@
+import signal
+import sys
+
 import torch
 import torchaudio
 import gradio as gr
@@ -15,7 +18,7 @@ SPEAKER_AUDIO_PATH = None
 
 
 def load_model_if_needed(model_choice: str):
-    global CURRENT_MODEL_TYPE, CURRENT_MODEL
+    global CURRENT_MODEL_TYPE, CURRENT_MODEL  # Make sure BOTH are here
     if CURRENT_MODEL_TYPE != model_choice:
         if CURRENT_MODEL is not None:
             del CURRENT_MODEL
@@ -416,4 +419,15 @@ def build_interface():
 if __name__ == "__main__":
     demo = build_interface()
     share = getenv("GRADIO_SHARE", "False").lower() in ("true", "1", "t")
+
+    def handle_shutdown(_signum, _frame):
+        print("Shutting down Gradio...")
+        try:
+            demo.close()
+        finally:
+            sys.exit(0)
+
+    signal.signal(signal.SIGINT, handle_shutdown)
+    signal.signal(signal.SIGTERM, handle_shutdown)
+
     demo.launch(server_name="0.0.0.0", server_port=7860, share=share)
