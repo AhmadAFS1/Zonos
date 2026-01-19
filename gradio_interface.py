@@ -16,6 +16,21 @@ CURRENT_MODEL = None
 SPEAKER_EMBEDDING = None
 SPEAKER_AUDIO_PATH = None
 
+SILENCE_PREFIX_CODES = None
+SILENCE_PREFIX_PATH = "assets/silence_100ms.wav"
+
+
+def get_silence_prefix_codes(model):
+    """Cache the silence prefix encoding."""
+    global SILENCE_PREFIX_CODES
+    if SILENCE_PREFIX_CODES is None:
+        wav_prefix, sr_prefix = torchaudio.load(SILENCE_PREFIX_PATH)
+        wav_prefix = wav_prefix.mean(0, keepdim=True)
+        wav_prefix = model.autoencoder.preprocess(wav_prefix, sr_prefix)
+        wav_prefix = wav_prefix.to(device, dtype=torch.float32)
+        SILENCE_PREFIX_CODES = model.autoencoder.encode(wav_prefix.unsqueeze(0))
+    return SILENCE_PREFIX_CODES
+
 
 def estimate_max_tokens(text: str, speaking_rate: float, buffer_factor: float = 1.5) -> int:
     """
@@ -171,16 +186,19 @@ def generate_audio(
             print("Recomputed speaker embedding")
             wav, sr = torchaudio.load(speaker_audio)
             SPEAKER_EMBEDDING = selected_model.make_speaker_embedding(wav, sr)
-            SPEAKER_EMBEDDING = SPEAKER_EMBEDDING.to(device, dtype=torch.bfloat16)
+            SPEAKER_EMBEDDING = SPEAKER_EMBEDDING.to(device, dtype=torch.float16)
             SPEAKER_AUDIO_PATH = speaker_audio
 
     audio_prefix_codes = None
     if prefix_audio is not None:
-        wav_prefix, sr_prefix = torchaudio.load(prefix_audio)
-        wav_prefix = wav_prefix.mean(0, keepdim=True)
-        wav_prefix = selected_model.autoencoder.preprocess(wav_prefix, sr_prefix)
-        wav_prefix = wav_prefix.to(device, dtype=torch.float32)
-        audio_prefix_codes = selected_model.autoencoder.encode(wav_prefix.unsqueeze(0))
+        if prefix_audio == SILENCE_PREFIX_PATH or "silence" in prefix_audio.lower():
+            audio_prefix_codes = get_silence_prefix_codes(selected_model)
+        else:
+            wav_prefix, sr_prefix = torchaudio.load(prefix_audio)
+            wav_prefix = wav_prefix.mean(0, keepdim=True)
+            wav_prefix = selected_model.autoencoder.preprocess(wav_prefix, sr_prefix)
+            wav_prefix = wav_prefix.to(device, dtype=torch.float32)
+            audio_prefix_codes = selected_model.autoencoder.encode(wav_prefix.unsqueeze(0))
 
     emotion_tensor = torch.tensor(list(map(float, [e1, e2, e3, e4, e5, e6, e7, e8])), device=device)
 
