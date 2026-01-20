@@ -2,9 +2,12 @@ import base64
 import hashlib
 import io
 import json
+import logging
 import os
 import tempfile
 import threading
+import time
+import uuid
 from collections import OrderedDict
 from typing import Any, Literal
 
@@ -20,6 +23,13 @@ from zonos.utils import DEFAULT_DEVICE as device
 
 
 app = FastAPI(title="Zonos API", version="0.1.0")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger("uvicorn.error")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(handler)
 
 CURRENT_MODEL_TYPE = None
 CURRENT_MODEL = None
@@ -53,6 +63,13 @@ def _parse_float_list(value: str | None, name: str) -> list[float] | None:
     try:
         data = json.loads(value)
         if isinstance(data, list):
+            if data and isinstance(data[0], list):
+                flat: list[float] = []
+                for row in data:
+                    if not isinstance(row, list):
+                        raise ValueError
+                    flat.extend(row)
+                return [float(x) for x in flat]
             return [float(x) for x in data]
     except json.JSONDecodeError:
         pass
@@ -73,6 +90,22 @@ def _parse_str_list(value: str | None) -> list[str] | None:
         except json.JSONDecodeError:
             pass
     return [x.strip() for x in value.split(",") if x.strip() != ""]
+
+
+def _get_speaker_cond_dim(model: Zonos) -> int | None:
+    for conditioner in model.prefix_conditioner.conditioners:
+        if conditioner.name == "speaker":
+            return conditioner.cond_dim
+    return None
+
+
+def _coerce_speaker_embedding(values: list[float], expected_dim: int | None) -> torch.Tensor:
+    if expected_dim is not None and len(values) != expected_dim:
+        raise HTTPException(
+            status_code=400,
+            detail=f"speaker_embedding must have length {expected_dim}, got {len(values)}",
+        )
+    return torch.tensor(values, device=device, dtype=torch.float16).view(1, -1)
 
 
 def _estimate_max_tokens(text: str, speaking_rate: float, buffer_factor: float = 1.5) -> int:
@@ -144,6 +177,7 @@ def _run_generation(
     text: str,
     language: str,
     speaker_audio_bytes: bytes | None,
+    speaker_embedding: list[float] | None,
     prefix_audio_bytes: bytes | None,
     use_silence_prefix: bool,
     cfg_scale: float,
@@ -165,39 +199,61 @@ def _run_generation(
     speaker_noised: bool,
     unconditional_keys: list[str] | None,
     disable_torch_compile: bool,
-) -> tuple[int, torch.Tensor, int]:
+    request_id: str | None = None,
+) -> tuple[int, torch.Tensor, int, str]:
     with MODEL_LOCK, torch.inference_mode():
         model = _load_model_if_needed(model_choice)
+        req_id = request_id or "-"
 
         if randomize_seed:
             seed = torch.randint(0, 2**32 - 1, (1,)).item()
         torch.manual_seed(int(seed))
 
-        speaker_embedding = None
-        if speaker_audio_bytes is not None and "speaker" not in (unconditional_keys or []):
-            cache_key = _hash_audio_bytes(speaker_audio_bytes)
-            wav, sr = _load_audio_bytes(speaker_audio_bytes)
-            wav = wav.mean(0, keepdim=True)
-            speaker_embedding = _get_speaker_embedding(model, wav, sr, cache_key)
+        speaker_embedding_tensor = None
+        speaker_source = "none"
+        speaker_len = None
+        t_speaker = 0.0
+        if "speaker" not in (unconditional_keys or []):
+            if speaker_embedding is not None:
+                speaker_source = "embedding"
+                speaker_len = len(speaker_embedding)
+                t0 = time.perf_counter()
+                expected_dim = _get_speaker_cond_dim(model)
+                speaker_embedding_tensor = _coerce_speaker_embedding(speaker_embedding, expected_dim)
+                t_speaker = time.perf_counter() - t0
+            elif speaker_audio_bytes is not None:
+                speaker_source = "audio"
+                t0 = time.perf_counter()
+                cache_key = _hash_audio_bytes(speaker_audio_bytes)
+                wav, sr = _load_audio_bytes(speaker_audio_bytes)
+                wav = wav.mean(0, keepdim=True)
+                speaker_embedding_tensor = _get_speaker_embedding(model, wav, sr, cache_key)
+                t_speaker = time.perf_counter() - t0
 
         audio_prefix_codes = None
+        t_prefix = 0.0
         if prefix_audio_bytes is not None:
+            t0 = time.perf_counter()
             wav_prefix, sr_prefix = _load_audio_bytes(prefix_audio_bytes)
             wav_prefix = wav_prefix.mean(0, keepdim=True)
             wav_prefix = model.autoencoder.preprocess(wav_prefix, sr_prefix)
             wav_prefix = wav_prefix.to(device, dtype=torch.float32)
             audio_prefix_codes = model.autoencoder.encode(wav_prefix.unsqueeze(0))
+            t_prefix = time.perf_counter() - t0
         elif use_silence_prefix:
+            t0 = time.perf_counter()
             audio_prefix_codes = _get_silence_prefix_codes(model)
+            t_prefix = time.perf_counter() - t0
 
         if max_new_tokens is None:
             max_new_tokens = _estimate_max_tokens(text, speaking_rate)
 
         vqscore_8 = _prepare_vqscore_8(vqscore_8)
+        t0 = time.perf_counter()
         cond_dict = make_cond_dict(
             text=text,
             language=language,
-            speaker=speaker_embedding,
+            speaker=speaker_embedding_tensor,
             emotion=emotion or None,
             vqscore_8=vqscore_8 or None,
             fmax=fmax,
@@ -209,7 +265,9 @@ def _run_generation(
             unconditional_keys=set(unconditional_keys or ["emotion"]),
         )
         conditioning = model.prepare_conditioning(cond_dict)
+        t_condition = time.perf_counter() - t0
 
+        t0 = time.perf_counter()
         codes = model.generate(
             prefix_conditioning=conditioning,
             audio_prefix_codes=audio_prefix_codes,
@@ -227,12 +285,30 @@ def _run_generation(
             progress_bar=False,
             disable_torch_compile=disable_torch_compile,
         )
+        t_generate = time.perf_counter() - t0
 
         wav_out = model.autoencoder.decode(codes).cpu().detach()
         if wav_out.dim() == 2 and wav_out.size(0) > 1:
             wav_out = wav_out[0:1, :]
         sr_out = model.autoencoder.sampling_rate
-        return sr_out, wav_out.squeeze(0), int(seed)
+        logger.info(
+            "req_id=%s model=%s lang=%s text_len=%d speaker=%s speaker_len=%s prefix=%s max_new=%d cfg=%.2f "
+            "times_ms(speaker=%.1f,prefix=%.1f,cond=%.1f,gen=%.1f)",
+            req_id,
+            model_choice,
+            language,
+            len(text),
+            speaker_source,
+            speaker_len,
+            bool(prefix_audio_bytes) or use_silence_prefix,
+            max_new_tokens,
+            cfg_scale,
+            t_speaker * 1000.0,
+            t_prefix * 1000.0,
+            t_condition * 1000.0,
+            t_generate * 1000.0,
+        )
+        return sr_out, wav_out.squeeze(0), int(seed), speaker_source
 
 
 class GenerateRequest(BaseModel):
@@ -240,6 +316,7 @@ class GenerateRequest(BaseModel):
     text: str
     language: str = "en-us"
     speaker_audio_base64: str | None = None
+    speaker_embedding: list[float] | None = None
     prefix_audio_base64: str | None = None
     use_silence_prefix: bool = True
     cfg_scale: float = 2.0
@@ -290,6 +367,7 @@ def generate(
     language: str = Form("en-us"),
     model_choice: str = Form("Zyphra/Zonos-v0.1-transformer"),
     speaker_audio: UploadFile | None = File(None),
+    speaker_embedding: str | None = Form(None),
     prefix_audio: UploadFile | None = File(None),
     use_silence_prefix: bool = Form(True),
     cfg_scale: float = Form(2.0),
@@ -322,12 +400,27 @@ def generate(
     emotion_list = _parse_float_list(emotion, "emotion")
     vqscore_list = _parse_float_list(vqscore_8, "vqscore_8")
     uncond_list = _parse_str_list(unconditional_keys)
+    speaker_embedding_list = _parse_float_list(speaker_embedding, "speaker_embedding")
+    req_id = uuid.uuid4().hex[:8]
+    logger.info(
+        "req_id=%s /generate model=%s lang=%s text_len=%d has_audio=%s emb_len=%s prefix=%s cfg=%.2f max_new=%s",
+        req_id,
+        model_choice,
+        language,
+        len(text),
+        speaker_bytes is not None,
+        None if speaker_embedding_list is None else len(speaker_embedding_list),
+        prefix_bytes is not None,
+        cfg_scale,
+        max_new_tokens,
+    )
 
-    sr_out, wav_out, seed_out = _run_generation(
+    sr_out, wav_out, seed_out, speaker_source = _run_generation(
         model_choice=model_choice,
         text=text,
         language=language,
         speaker_audio_bytes=speaker_bytes,
+        speaker_embedding=speaker_embedding_list,
         prefix_audio_bytes=prefix_bytes,
         use_silence_prefix=use_silence_prefix,
         cfg_scale=cfg_scale,
@@ -349,32 +442,55 @@ def generate(
         speaker_noised=speaker_noised,
         unconditional_keys=uncond_list,
         disable_torch_compile=disable_torch_compile,
+        request_id=req_id,
     )
 
     wav_bytes = _to_wav_bytes(wav_out, sr_out)
+    response_headers = {
+        "X-Seed": str(seed_out),
+        "X-Request-Id": req_id,
+        "X-Speaker-Source": speaker_source,
+    }
     if response_format == "wav":
         return StreamingResponse(
             io.BytesIO(wav_bytes),
             media_type="audio/wav",
-            headers={"X-Seed": str(seed_out)},
+            headers=response_headers,
         )
     audio_b64 = base64.b64encode(wav_bytes).decode("ascii")
-    return JSONResponse({"sample_rate": sr_out, "audio_base64": audio_b64, "seed": seed_out})
+    return JSONResponse(
+        {"sample_rate": sr_out, "audio_base64": audio_b64, "seed": seed_out},
+        headers=response_headers,
+    )
 
 
 @app.post("/generate-json")
 def generate_json(payload: GenerateRequest):
     if payload.language not in supported_language_codes:
         raise HTTPException(status_code=400, detail="Unsupported language code")
+    req_id = uuid.uuid4().hex[:8]
+    logger.info(
+        "req_id=%s /generate-json model=%s lang=%s text_len=%d has_audio=%s emb_len=%s prefix=%s cfg=%.2f max_new=%s",
+        req_id,
+        payload.model_choice,
+        payload.language,
+        len(payload.text),
+        payload.speaker_audio_base64 is not None,
+        None if payload.speaker_embedding is None else len(payload.speaker_embedding),
+        payload.prefix_audio_base64 is not None,
+        payload.cfg_scale,
+        payload.max_new_tokens,
+    )
 
     speaker_bytes = base64.b64decode(payload.speaker_audio_base64) if payload.speaker_audio_base64 else None
     prefix_bytes = base64.b64decode(payload.prefix_audio_base64) if payload.prefix_audio_base64 else None
 
-    sr_out, wav_out, seed_out = _run_generation(
+    sr_out, wav_out, seed_out, speaker_source = _run_generation(
         model_choice=payload.model_choice,
         text=payload.text,
         language=payload.language,
         speaker_audio_bytes=speaker_bytes,
+        speaker_embedding=payload.speaker_embedding,
         prefix_audio_bytes=prefix_bytes,
         use_silence_prefix=payload.use_silence_prefix,
         cfg_scale=payload.cfg_scale,
@@ -396,17 +512,43 @@ def generate_json(payload: GenerateRequest):
         speaker_noised=payload.speaker_noised,
         unconditional_keys=payload.unconditional_keys,
         disable_torch_compile=payload.disable_torch_compile,
+        request_id=req_id,
     )
 
     wav_bytes = _to_wav_bytes(wav_out, sr_out)
+    response_headers = {
+        "X-Seed": str(seed_out),
+        "X-Request-Id": req_id,
+        "X-Speaker-Source": speaker_source,
+    }
     if payload.response_format == "wav":
         return StreamingResponse(
             io.BytesIO(wav_bytes),
             media_type="audio/wav",
-            headers={"X-Seed": str(seed_out)},
+            headers=response_headers,
         )
     audio_b64 = base64.b64encode(wav_bytes).decode("ascii")
-    return JSONResponse({"sample_rate": sr_out, "audio_base64": audio_b64, "seed": seed_out})
+    return JSONResponse(
+        {"sample_rate": sr_out, "audio_base64": audio_b64, "seed": seed_out},
+        headers=response_headers,
+    )
+
+
+@app.post("/speaker-embedding")
+def speaker_embedding_endpoint(
+    speaker_audio: UploadFile = File(...),
+    model_choice: str = Form("Zyphra/Zonos-v0.1-transformer"),
+):
+    if speaker_audio is None:
+        raise HTTPException(status_code=400, detail="speaker_audio is required")
+    with MODEL_LOCK, torch.inference_mode():
+        model = _load_model_if_needed(model_choice)
+        wav, sr = _load_audio_bytes(speaker_audio.file.read())
+        wav = wav.mean(0, keepdim=True)
+        embedding = model.make_speaker_embedding(wav, sr)
+    embedding_flat = embedding.squeeze().float().cpu()
+    embedding_list = embedding_flat.tolist()
+    return JSONResponse({"embedding": embedding_list, "dim": embedding_flat.numel()})
 
 
 if __name__ == "__main__":
