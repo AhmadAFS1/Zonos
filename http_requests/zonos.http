@@ -1,0 +1,78 @@
+@baseUrl = http://localhost:8000
+@modelChoice = Zyphra/Zonos-v0.1-hybrid
+@language = es
+@text = Hola, como estas hoy?
+# Speaking rate in phonemes per minute (5-30 in UI).
+@speakingRate = 13.0
+# Multipart boundary for file uploads (REST Client needs this explicitly).
+@boundary = ZonosBoundary
+# Output path is relative to this .http file (http_requests/).
+@outputFile = /Zonos/outputs/out.wav
+# Set these to files under the local input folder.
+# @speakerAudio = input/speaker.wav
+# @prefixAudio = input/prefix.wav
+
+@speakerAudio = /Zonos/input/speech-3.wav
+
+
+### Health
+GET {{baseUrl}}/health
+
+### Models
+GET {{baseUrl}}/models
+
+### Languages
+GET {{baseUrl}}/languages
+
+### Generate (multipart, WAV response)
+POST {{baseUrl}}/generate
+Content-Type: multipart/form-data; boundary={{boundary}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="text"
+
+{{text}}
+--{{boundary}}
+Content-Disposition: form-data; name="language"
+
+{{language}}
+--{{boundary}}
+Content-Disposition: form-data; name="model_choice"
+
+{{modelChoice}}
+--{{boundary}}
+Content-Disposition: form-data; name="speaking_rate"
+
+{{speakingRate}}
+--{{boundary}}
+Content-Disposition: form-data; name="response_format"
+
+wav
+--{{boundary}}
+Content-Disposition: form-data; name="speaker_audio"; filename="speaker.wav"
+Content-Type: audio/wav
+
+< {{speakerAudio}}
+# --{{boundary}}
+# Content-Disposition: form-data; name="prefix_audio"; filename="prefix.wav"
+# Content-Type: audio/wav
+#
+# < {{prefixAudio}}
+--{{boundary}}--
+
+# @name generateRequest
+
+> {{outputFile}}
+
+### Generate (JSON payload with base64, JSON response)
+# Fill in speaker_audio_base64/prefix_audio_base64 with base64 strings if needed.
+POST {{baseUrl}}/generate-json
+Content-Type: application/json
+
+{
+  "model_choice": "{{modelChoice}}",
+  "text": "{{text}}",
+  "language": "{{language}}",
+  "speaking_rate": {{speakingRate}},
+  "response_format": "json"
+}
