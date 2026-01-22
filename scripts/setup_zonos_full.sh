@@ -1,14 +1,18 @@
-cat <<'SETUP_ZONOS_FULL' > setup_zonos_full.sh
 #!/usr/bin/env bash
 set -euo pipefail
 
 REPO_URL="https://github.com/AhmadAFS1/Zonos.git"
 REPO_DIR="Zonos"
+ROOT_DIR=""
 
 SCAN_ONLY=0
 WITH_COMPILE=0
 RUN_CHECK=0
 PYTHON_BIN="python"
+TORCH_VERSION="${TORCH_VERSION:-2.4.1+cu118}"
+TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.19.1+cu118}"
+TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.4.1+cu118}"
+TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu118}"
 
 usage() {
   cat <<'USAGE'
@@ -60,7 +64,9 @@ install_python_312_and_venv() {
 
   python3.12 --version
   log "Creating venv at ./zonos-venv..."
-  python3.12 -m venv "./zonos-venv"
+  if [[ ! -d "./zonos-venv" ]]; then
+    python3.12 -m venv "./zonos-venv"
+  fi
   # shellcheck disable=SC1091
   source "./zonos-venv/bin/activate"
   python -m pip install -U pip setuptools wheel
@@ -113,11 +119,29 @@ install_uv() {
   exit 1
 }
 
+install_torch_stack() {
+  log "Installing pinned torch stack to avoid CUDA/NCCL mismatches..."
+  uv pip uninstall torch torchvision torchaudio triton || true
+  uv pip install \
+    "torch==${TORCH_VERSION}" \
+    "torchvision==${TORCHVISION_VERSION}" \
+    "torchaudio==${TORCHAUDIO_VERSION}" \
+    --index-url "${TORCH_INDEX_URL}"
+
+  if ! python -c "import torch; print(torch.__version__, torch.version.cuda)" >/dev/null 2>&1; then
+    log "Torch failed to import after install."
+    log "If you see NCCL symbol errors, clear LD_LIBRARY_PATH or install a matching CUDA/NCCL toolchain."
+    exit 1
+  fi
+}
+
 install_python_deps() {
-  log "Installing into the current active environment using uv..."
-  uv pip install -e .
+  log "Installing Zonos without dependency resolution to keep pinned torch..."
+  uv pip install -e . --no-deps
   if [[ "$WITH_COMPILE" -eq 1 ]]; then
-    uv pip install -e .[compile]
+    log "Installing compile extras (hybrid) without pulling torch..."
+    uv pip install psutil
+    uv pip install --no-build-isolation --no-deps flash-attn causal-conv1d mamba-ssm
   fi
 }
 
@@ -149,6 +173,7 @@ done
 
 clone_repo
 cd "$REPO_DIR"
+ROOT_DIR="$(pwd)"
 
 scan_repo
 if [[ "$SCAN_ONLY" -eq 1 ]]; then
@@ -158,10 +183,10 @@ fi
 install_python_312_and_venv
 install_espeak
 install_uv
+install_torch_stack
 install_python_deps
 install_audio_deps
 
 if [[ "$RUN_CHECK" -eq 1 ]]; then
   run_check
 fi
-SETUP_ZONOS_FULL

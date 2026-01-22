@@ -17,6 +17,10 @@ SCAN_ONLY=0
 WITH_COMPILE=0
 RUN_CHECK=0
 PYTHON_BIN=""
+TORCH_VERSION="${TORCH_VERSION:-2.4.1+cu118}"
+TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.19.1+cu118}"
+TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.4.1+cu118}"
+TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu118}"
 
 usage() {
   cat <<'USAGE'
@@ -91,10 +95,12 @@ install_uv() {
 }
 
 install_python_deps() {
-  log "Installing into the current active environment using uv..."
-  uv pip install -e "$ROOT_DIR"
+  log "Installing Zonos without dependency resolution to keep pinned torch..."
+  uv pip install -e "$ROOT_DIR" --no-deps
   if [[ "$WITH_COMPILE" -eq 1 ]]; then
-    uv pip install -e "$ROOT_DIR[compile]"
+    log "Installing compile extras (hybrid) without pulling torch..."
+    uv pip install psutil
+    uv pip install --no-build-isolation --no-deps flash-attn causal-conv1d mamba-ssm
   fi
 }
 
@@ -133,6 +139,22 @@ ensure_python_312() {
   exit 1
 }
 
+install_torch_stack() {
+  log "Installing pinned torch stack to avoid CUDA/NCCL mismatches..."
+  uv pip uninstall torch torchvision torchaudio triton || true
+  uv pip install \
+    "torch==${TORCH_VERSION}" \
+    "torchvision==${TORCHVISION_VERSION}" \
+    "torchaudio==${TORCHAUDIO_VERSION}" \
+    --index-url "${TORCH_INDEX_URL}"
+
+  if ! "$PYTHON_BIN" -c "import torch; print(torch.__version__, torch.version.cuda)" >/dev/null 2>&1; then
+    log "Torch failed to import after install."
+    log "If you see NCCL symbol errors, clear LD_LIBRARY_PATH or install a matching CUDA/NCCL toolchain."
+    exit 1
+  fi
+}
+
 install_audio_deps() {
   log "Installing audio decode dependencies (torchcodec + ffmpeg)..."
   if command -v brew >/dev/null 2>&1; then
@@ -162,6 +184,7 @@ fi
 ensure_python_312
 install_espeak
 install_uv
+install_torch_stack
 install_python_deps
 install_audio_deps
 
