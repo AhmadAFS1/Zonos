@@ -42,15 +42,18 @@ clone_repo() {
 scan_repo() {
   log "Scanning repo for install instructions (excluding models/)..."
   if command -v rg >/dev/null 2>&1; then
-    rg -n "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" -S "$REPO_DIR" --glob '!models/**'
+    rg -n "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" -S . --glob '!models/**'
   else
-    grep -RInE "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" "$REPO_DIR" --exclude-dir=models
+    grep -RInE "install|dependencies|requirements|setup|uv sync|pip install|espeak|phonem" . --exclude-dir=models
   fi
 }
 
 install_python_312_and_venv() {
   if command -v apt-get >/dev/null 2>&1; then
     log "Installing Python 3.12 (apt-get)..."
+    sudo apt-get update
+    sudo apt-get install -y software-properties-common
+    sudo add-apt-repository ppa:deadsnakes/ppa
     sudo apt-get update
     sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
   else
