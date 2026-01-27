@@ -65,14 +65,14 @@ Content-Disposition: form-data; name="speaking_rate"
 --{{boundary}}
 Content-Disposition: form-data; name="response_format"
 
-#wav
-#--{{boundary}}
+wav
+--{{boundary}}
 #Content-Disposition: form-data; name="speaker_embedding"
-
+#
 #{{speakerEmbedding}}
 #--{{boundary}}
 Content-Disposition: form-data; name="speaker_audio"; filename="speaker.wav"
-content-Type: audio/wav
+Content-Type: audio/wav
 
 < {{speakerAudio}}
 # --{{boundary}}
