@@ -9,10 +9,10 @@ SCAN_ONLY=0
 WITH_COMPILE=0
 RUN_CHECK=0
 PYTHON_BIN="python"
-TORCH_VERSION="${TORCH_VERSION:-2.4.1+cu118}"
-TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.19.1+cu118}"
-TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.4.1+cu118}"
-TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu118}"
+TORCH_VERSION="${TORCH_VERSION:-2.5.1+cu121}"
+TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.20.1+cu121}"
+TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.5.1+cu121}"
+TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu121}"
 
 usage() {
   cat <<'USAGE'
@@ -141,16 +141,49 @@ install_torch_stack() {
 install_python_deps() {
   log "Installing Zonos without dependency resolution to keep pinned torch..."
   uv pip install -e . --no-deps
+  log "Installing Zonos dependencies (excluding torch)..."
+  deps=$(python - <<'PY'
+import tomllib
+from pathlib import Path
+
+data = tomllib.loads(Path("pyproject.toml").read_text())
+deps = data.get("project", {}).get("dependencies", [])
+skip = {"torch", "torchaudio", "torchvision"}
+filtered = []
+for dep in deps:
+    name = dep.split(";")[0].strip().split()[0]
+    if name in skip:
+        continue
+    filtered.append(dep)
+print(" ".join(filtered))
+PY
+)
+  if [[ -n "$deps" ]]; then
+    # shellcheck disable=SC2086
+    uv pip install $deps
+  fi
   if [[ "$WITH_COMPILE" -eq 1 ]]; then
+    if command -v apt-get >/dev/null 2>&1; then
+      log "Installing build tools for compile extras..."
+      sudo apt-get update
+      sudo apt-get install -y build-essential ninja-build
+    fi
+    if ! command -v nvcc >/dev/null 2>&1; then
+      log "nvcc not found. Compile extras may fail without a CUDA devel toolkit."
+    fi
     log "Installing compile extras (hybrid) without pulling torch..."
     uv pip install psutil
+    uv pip install einops
     uv pip install --no-build-isolation --no-deps flash-attn causal-conv1d mamba-ssm
   fi
 }
 
 install_audio_deps() {
   log "Installing audio decode dependencies (torchcodec + ffmpeg)..."
-  if command -v brew >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo apt-get install -y ffmpeg
+  elif command -v brew >/dev/null 2>&1; then
     brew install ffmpeg
   else
     log "Homebrew not found. Install ffmpeg manually."
