@@ -15,7 +15,268 @@
 # @speakerAudio = input/speaker.wav
 # @prefixAudio = input/prefix.wav
 
-@speakerAudio = /Zonos/input/speech-3.wav
+@speakerAudio = INFO:     req_id=00f400bc /generate model=Zyphra/Zonos-v0.1-hybrid lang=es text_len=145 has_audio=True emb_len=None prefix=False cfg=2.00 max_new=None
+INFO: HTTP Request: HEAD https://huggingface.co/Zyphra/Zonos-v0.1-hybrid/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+INFO: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Zyphra/Zonos-v0.1-hybrid/5b91c392fc599c194d429c00ee4d157ead6f0394/config.json "HTTP/1.1 200 OK"
+INFO: HTTP Request: HEAD https://huggingface.co/Zyphra/Zonos-v0.1-hybrid/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+INFO: HTTP Request: HEAD https://huggingface.co/descript/dac_44khz/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+INFO: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/descript/dac_44khz/c1bc521685adf9cfe247bc39a5ca58917eda1ac4/config.json "HTTP/1.1 200 OK"
+INFO: HTTP Request: HEAD https://huggingface.co/descript/dac_44khz/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+Loading weights: 100%|█████████████████████████████████████| 223/223 [00:00<00:00, 2471.50it/s, Materializing param=quantizer.quantizers.8.out_proj.weight]
+INFO: HTTP Request: HEAD https://huggingface.co/Zyphra/Zonos-v0.1-speaker-embedding/resolve/main/ResNet293_SimAM_ASP_base.pt "HTTP/1.1 302 Found"
+INFO: HTTP Request: HEAD https://huggingface.co/Zyphra/Zonos-v0.1-speaker-embedding/resolve/main/ResNet293_SimAM_ASP_base_LDA-128.pt "HTTP/1.1 302 Found"
+INFO:     127.0.0.1:49478 - "POST /generate HTTP/1.1" 500 Internal Server Error
+ERROR: Exception in ASGI application
+Traceback (most recent call last):
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/applications.py", line 1135, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 245, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/api_server.py", line 418, in generate
+    sr_out, wav_out, seed_out, speaker_source = _run_generation(
+                                                ^^^^^^^^^^^^^^^^
+  File "/Zonos/api_server.py", line 271, in _run_generation
+    codes = model.generate(
+            ^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/model.py", line 255, in generate
+    logits = self._prefill(prefix_conditioning, delayed_prefix_audio_codes, inference_params, cfg_scale)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/model.py", line 196, in _prefill
+    return self._compute_logits(hidden_states, inference_params, cfg_scale)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/model.py", line 110, in _compute_logits
+    last_hidden_states = self.backbone(hidden_states, inference_params)[:, -1, :].unsqueeze(1)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/backbone/_mamba_ssm.py", line 48, in forward
+    hidden_states, residual = layer(hidden_states, residual, inference_params)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/mamba_ssm/modules/block.py", line 67, in forward
+    hidden_states = self.mixer(hidden_states, inference_params=inference_params, **mixer_kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/mamba_ssm/modules/mha.py", line 276, in forward
+    q, kv = self.rotary_emb(
+            ^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/layers/rotary.py", line 467, in forward
+    q = apply_rotary_emb_func(
+        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/layers/rotary.py", line 121, in apply_rotary_emb
+    return ApplyRotaryEmb.apply(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/autograd/function.py", line 575, in apply
+    return super().apply(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/layers/rotary.py", line 51, in forward
+    out = apply_rotary(
+          ^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/ops/triton/rotary.py", line 159, in apply_rotary
+    torch.library.wrap_triton(rotary_kernel)[grid](
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'torch.library' has no attribute 'wrap_triton'
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/applications.py", line 1135, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/fastapi/routing.py", line 245, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/api_server.py", line 418, in generate
+    sr_out, wav_out, seed_out, speaker_source = _run_generation(
+                                                ^^^^^^^^^^^^^^^^
+  File "/Zonos/api_server.py", line 271, in _run_generation
+    codes = model.generate(
+            ^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/model.py", line 255, in generate
+    logits = self._prefill(prefix_conditioning, delayed_prefix_audio_codes, inference_params, cfg_scale)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/model.py", line 196, in _prefill
+    return self._compute_logits(hidden_states, inference_params, cfg_scale)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/model.py", line 110, in _compute_logits
+    last_hidden_states = self.backbone(hidden_states, inference_params)[:, -1, :].unsqueeze(1)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos/backbone/_mamba_ssm.py", line 48, in forward
+    hidden_states, residual = layer(hidden_states, residual, inference_params)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/mamba_ssm/modules/block.py", line 67, in forward
+    hidden_states = self.mixer(hidden_states, inference_params=inference_params, **mixer_kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/mamba_ssm/modules/mha.py", line 276, in forward
+    q, kv = self.rotary_emb(
+            ^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/layers/rotary.py", line 467, in forward
+    q = apply_rotary_emb_func(
+        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/layers/rotary.py", line 121, in apply_rotary_emb
+    return ApplyRotaryEmb.apply(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/torch/autograd/function.py", line 575, in apply
+    return super().apply(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/layers/rotary.py", line 51, in forward
+    out = apply_rotary(
+          ^^^^^^^^^^^^^
+  File "/Zonos/zonos-venv/lib/python3.12/site-packages/flash_attn/ops/triton/rotary.py", line 159, in apply_rotary
+    torch.library.wrap_triton(rotary_kernel)[grid](
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'torch.library' has no attribute 'wrap_triton'
+
 
 
 ### Health

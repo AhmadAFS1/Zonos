@@ -13,6 +13,10 @@ TORCH_VERSION="${TORCH_VERSION:-2.5.1+cu121}"
 TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.20.1+cu121}"
 TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.5.1+cu121}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu121}"
+SUDO="sudo"
+if [[ "$(id -u)" -eq 0 ]] || ! command -v sudo >/dev/null 2>&1; then
+  SUDO=""
+fi
 
 usage() {
   cat <<'USAGE'
@@ -28,6 +32,14 @@ USAGE
 
 log() {
   printf "[full-setup] %s\n" "$@"
+}
+
+install_system_tools() {
+  if command -v apt-get >/dev/null 2>&1; then
+    log "Installing system tools..."
+    $SUDO apt-get update
+    $SUDO apt-get install -y git curl ca-certificates libsndfile1
+  fi
 }
 
 clone_repo() {
@@ -51,11 +63,11 @@ scan_repo() {
 install_python_312_and_venv() {
   if command -v apt-get >/dev/null 2>&1; then
     log "Installing Python 3.12 (apt-get)..."
-    sudo apt-get update
-    sudo apt-get install -y software-properties-common
-    sudo add-apt-repository ppa:deadsnakes/ppa
-    sudo apt-get update
-    sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
+    $SUDO apt-get update
+    $SUDO apt-get install -y software-properties-common
+    $SUDO add-apt-repository ppa:deadsnakes/ppa
+    $SUDO apt-get update
+    $SUDO apt-get install -y python3.12 python3.12-venv python3.12-dev
   else
     log "apt-get not found. Ensure Python 3.12 is installed manually."
   fi
@@ -83,15 +95,15 @@ install_espeak() {
 
   if command -v apt-get >/dev/null 2>&1; then
     log "Installing eSpeak (apt-get)..."
-    sudo apt-get update
-    sudo apt-get install -y espeak-ng
+    $SUDO apt-get update
+    $SUDO apt-get install -y espeak-ng
     return
   fi
 
   if command -v apt >/dev/null 2>&1; then
     log "Installing eSpeak (apt)..."
-    sudo apt update
-    sudo apt install -y espeak-ng
+    $SUDO apt update
+    $SUDO apt install -y espeak-ng
     return
   fi
 
@@ -165,8 +177,8 @@ PY
   if [[ "$WITH_COMPILE" -eq 1 ]]; then
     if command -v apt-get >/dev/null 2>&1; then
       log "Installing build tools for compile extras..."
-      sudo apt-get update
-      sudo apt-get install -y build-essential ninja-build
+      $SUDO apt-get update
+      $SUDO apt-get install -y build-essential ninja-build
     fi
     if ! command -v nvcc >/dev/null 2>&1; then
       log "nvcc not found. Compile extras may fail without a CUDA devel toolkit."
@@ -181,8 +193,8 @@ PY
 install_audio_deps() {
   log "Installing audio decode dependencies (torchcodec + ffmpeg)..."
   if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update
-    sudo apt-get install -y ffmpeg
+    $SUDO apt-get update
+    $SUDO apt-get install -y ffmpeg libsndfile1
   elif command -v brew >/dev/null 2>&1; then
     brew install ffmpeg
   else
@@ -207,6 +219,7 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+install_system_tools
 clone_repo
 cd "$REPO_DIR"
 ROOT_DIR="$(pwd)"
