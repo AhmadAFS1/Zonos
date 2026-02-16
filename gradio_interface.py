@@ -469,4 +469,4 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, handle_shutdown)
     signal.signal(signal.SIGTERM, handle_shutdown)
 
-    demo.launch(server_name="0.0.0.0", server_port=7860, share=share)
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=True)
